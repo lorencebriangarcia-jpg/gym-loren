@@ -134,6 +134,11 @@ label.f input,label.f select{min-height:44px;border-radius:10px;border:1px solid
 .timer-big{font-family:var(--f-mono);font-weight:600;font-size:1rem}
 .ex-block{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:8px}
 .ex-head{display:flex;align-items:flex-start;gap:8px}
+.grip{width:34px;height:40px;flex:none;display:inline-grid;place-items:center;color:var(--muted);border-radius:10px;touch-action:none;cursor:grab;font-size:1.25rem;line-height:1;letter-spacing:-.1em;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.grip:active{cursor:grabbing;background:var(--surface-2)}
+[data-drag-item]{position:relative;transition:transform .16s ease}
+[data-drag-item].dragging{transition:none;z-index:5;box-shadow:0 10px 28px rgba(0,0,0,.35);opacity:.97;background:var(--surface)}
+body.is-dragging{user-select:none;-webkit-user-select:none}
 .ex-head .name{font-weight:600;font-size:1.02rem;color:var(--accent);text-align:left}
 .sets{display:grid;grid-template-columns:34px minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 44px;gap:6px;align-items:center}
 .sets.c2{grid-template-columns:34px minmax(0,1.3fr) minmax(0,1fr) 44px}
@@ -147,7 +152,11 @@ label.f input,label.f select{min-height:44px;border-radius:10px;border:1px solid
 .check{height:38px;border-radius:9px;background:var(--surface-2);display:grid;place-items:center;color:var(--muted)}
 .check[aria-pressed="true"]{background:var(--green);color:var(--bg)}
 .setrow.done input{background:color-mix(in srgb,var(--green) 12%,var(--bg));border-color:color-mix(in srgb,var(--green) 40%,var(--line))}
-.rest{position:sticky;top:0;z-index:2;background:var(--accent);color:var(--accent-fg);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;box-shadow:var(--shadow)}
+#rest-slot{flex:none}
+#rest-slot:not(:empty){padding:8px 12px 4px;background:var(--bg);max-width:664px;width:100%;margin:0 auto}
+.rest{background:var(--accent);color:var(--accent-fg);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)}
+.rest.ended{animation:restflash .5s ease 3}
+@keyframes restflash{50%{filter:brightness(1.35)}}
 .rest .bar2{flex:1;height:6px;border-radius:3px;background:color-mix(in srgb,var(--accent-fg) 25%,transparent);overflow:hidden}
 .rest .bar2 i{display:block;height:100%;background:var(--accent-fg)}
 .rest button{color:inherit;font-weight:600;font-family:var(--f-mono);padding:4px 8px;border-radius:8px;background:color-mix(in srgb,var(--accent-fg) 18%,transparent)}
@@ -524,16 +533,16 @@ function sheetActive(){
       const fields=ex.type==="kg_reps"?inp("kg",p?fmtKg(p.kg):"")+inp("reps",p?p.reps:""):ex.type==="reps"?inp("reps",p?p.reps:""):inp("sec",p?p.sec:"");
       return `<button class="setno ${s.warm?"warm":""}" data-act="toggle-warm" data-i="${i}" data-j="${j}" aria-label="Cambiar tipo de serie">${s.warm?"C":j+1-it.sets.slice(0,j).filter(x=>x.warm).length}</button><span class="prev">${p?setLabel(p,ex.type):"—"}</span>${fields}<button class="check" data-act="toggle-done" data-i="${i}" data-j="${j}" aria-pressed="${!!s.done}" aria-label="Serie hecha">${ICON.check}</button>`.replace(/^/,`<div style="display:contents" class="setrow ${s.done?"done":""}">`)+`</div>`;
     }).join("");
-    return `<div class="ex-block">
-      <div class="ex-head"><button class="name grow" data-act="open-ex" data-id="${it.exId}">${esc(ex.name)}</button><button class="iconbtn" data-act="ex-menu" data-i="${i}" aria-label="Opciones">${ICON.dots}</button></div>
+    return `<div class="ex-block" data-drag-item>
+      <div class="ex-head"><button class="grip" data-grip aria-label="Arrastrar para reordenar" title="Arrastra para reordenar">⠿</button><button class="name grow" data-act="open-ex" data-id="${it.exId}">${esc(ex.name)}</button><button class="iconbtn" data-act="ex-menu" data-i="${i}" aria-label="Opciones">${ICON.dots}</button></div>
       ${it.note!=null?`<input class="search" style="min-height:38px;font-size:16px" id="note-${i}" data-act="note-in" data-i="${i}" placeholder="Nota (agarre, asiento, sensaciones…)" value="${esc(it.note)}">`:""}
       <div class="sets ${cols.length===1?"c2":""}"><span class="h">Serie</span><span class="h">Anterior</span>${cols.map(c=>`<span class="h">${c}</span>`).join("")}<span class="h">✓</span>${rows}</div>
       <button class="btn sm" data-act="add-set" data-i="${i}">${ICON.plus} Añadir serie</button>
     </div>`}).join("");
   return `<div class="bar"><button class="iconbtn" data-act="minimize" aria-label="Minimizar">${ICON.down}</button><div class="grow"><input id="wo-name" value="${esc(a.name)}" data-act="wo-name" style="border:0;background:transparent;font-weight:600;font-size:1rem;width:100%;padding:0" aria-label="Nombre del entreno"><div class="small muted num" id="wo-clock">${clock(Date.now()-a.start)}</div></div><button class="btn primary sm" data-act="finish">Terminar</button></div>
-  <div class="body"><div class="in stack">
-    <div id="rest-slot">${restHtml()}</div>
-    ${items||`<div class="empty"><strong>Entreno vacío</strong>Añade tu primer ejercicio. Si no está en la lista, créalo desde el buscador.</div>`}
+  <div id="rest-slot">${restHtml()}</div>
+  <div class="body"><div class="in stack"><div class="stack" data-drag-list="active">${items}</div>
+    ${items?"":`<div class="empty"><strong>Entreno vacío</strong>Añade tu primer ejercicio. Si no está en la lista, créalo desde el buscador.</div>`}
     <button class="btn primary block" data-act="add-ex">${ICON.plus} Añadir ejercicios</button>
     <button class="btn danger block" data-act="discard">Descartar entreno</button>
   </div></div>`;
@@ -544,8 +553,12 @@ function restHtml(){
   return `<div class="rest" role="timer"><span class="eyebrow" style="color:inherit">Descanso</span><b class="num" id="rest-clock">${clock(left)}</b><span class="bar2"><i id="rest-bar" style="width:${100*left/rest.total}%"></i></span><button data-act="rest-add" data-d="-15">−15</button><button data-act="rest-add" data-d="15">+15</button><button data-act="rest-skip" aria-label="Saltar descanso">${ICON.x}</button></div>`;
 }
 let audioCtx=null;
-function beep(){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=880;g.gain.setValueAtTime(.25,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.6);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+.6)}catch(e){}try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
-function startRest(sec){rest={end:Date.now()+sec*1000,total:sec*1000};try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}const slot=$("#rest-slot");if(slot)slot.innerHTML=restHtml()}
+function unlockAudio(){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume()}catch(e){}}
+/* tres pitidos seguidos, bien audibles; el contexto se reactiva por si el móvil lo suspendió */
+function beep(){try{unlockAudio();const t0=audioCtx.currentTime+.02;[0,.28,.56].forEach((d,k)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type="square";o.frequency.value=k===2?1175:880;g.gain.setValueAtTime(.0001,t0+d);g.gain.exponentialRampToValueAtTime(.35,t0+d+.02);g.gain.exponentialRampToValueAtTime(.001,t0+d+.22);o.connect(g).connect(audioCtx.destination);o.start(t0+d);o.stop(t0+d+.24)})}catch(e){}try{navigator.vibrate&&navigator.vibrate([250,100,250,100,250])}catch(e){}}
+/* el primer toque en la pantalla desbloquea el audio (iOS lo exige) */
+document.addEventListener("pointerdown",unlockAudio,{once:false,passive:true});
+function startRest(sec){rest={end:Date.now()+sec*1000,total:sec*1000};unlockAudio();const slot=$("#rest-slot");if(slot)slot.innerHTML=restHtml()}
 let wakeLock=null;
 async function keepAwake(){try{if(navigator.wakeLock&&!wakeLock){wakeLock=await navigator.wakeLock.request("screen");wakeLock.addEventListener("release",()=>wakeLock=null)}}catch(e){}}
 function saveActive(){LS.set("gym.active",active)}
@@ -578,11 +591,11 @@ function openPicker(target){openSheet({type:"picker",target,sel:new Set(),q:"",f
 /* rutina */
 function sheetRoutine(s){
   const r=s.draft;
-  const rows=r.items.map((it,i)=>{const ex=exById(it.exId);return `<div class="item"><div class="grow"><div style="font-weight:600">${esc(ex.name)}</div><div class="small muted">${esc(ex.muscle)}</div></div><div class="row" style="gap:4px"><button class="btn sm" data-act="rt-sets" data-i="${i}" data-d="-1" aria-label="Menos series">−</button><span class="num" style="min-width:58px;text-align:center">${it.sets} series</span><button class="btn sm" data-act="rt-sets" data-i="${i}" data-d="1" aria-label="Más series">+</button></div><button class="iconbtn" data-act="rt-move" data-i="${i}" aria-label="Subir">↑</button><button class="iconbtn" data-act="rt-del" data-i="${i}" aria-label="Quitar">${ICON.x}</button></div>`}).join("");
+  const rows=r.items.map((it,i)=>{const ex=exById(it.exId);return `<div class="item" data-drag-item><button class="grip" data-grip aria-label="Arrastrar para reordenar" title="Arrastra para reordenar">⠿</button><div class="grow"><div style="font-weight:600">${esc(ex.name)}</div><div class="small muted">${esc(ex.muscle)}</div></div><div class="row" style="gap:4px"><button class="btn sm" data-act="rt-sets" data-i="${i}" data-d="-1" aria-label="Menos series">−</button><span class="num" style="min-width:58px;text-align:center">${it.sets} series</span><button class="btn sm" data-act="rt-sets" data-i="${i}" data-d="1" aria-label="Más series">+</button></div><button class="iconbtn" data-act="rt-del" data-i="${i}" aria-label="Quitar">${ICON.x}</button></div>`}).join("");
   return `<div class="bar"><button class="iconbtn" data-act="close-sheet" aria-label="Cerrar">${ICON.x}</button><h2 class="grow">${s.isNew?"Nueva rutina":"Editar rutina"}</h2><button class="btn primary sm" data-act="rt-save">Guardar</button></div>
   <div class="body"><div class="in stack">
     <label class="f" for="rt-name">Nombre<input id="rt-name" data-act="rt-name" value="${esc(r.name)}" placeholder="Ej.: Torso A, Pierna, Push…"></label>
-    ${r.items.length?`<div class="list">${rows}</div>`:`<div class="empty"><strong>Sin ejercicios todavía</strong>Añade los de esta rutina; podrás ajustar las series de cada uno.</div>`}
+    ${r.items.length?`<div class="list" data-drag-list="routine">${rows}</div>`:`<div class="empty"><strong>Sin ejercicios todavía</strong>Añade los de esta rutina; podrás ajustar las series de cada uno.</div>`}
     <button class="btn ghost block" data-act="add-ex-rt">${ICON.plus} Añadir ejercicios</button>
     ${s.isNew?"":`<button class="btn danger block" data-act="rt-delete">Eliminar rutina</button>`}
   </div></div>`;
@@ -691,7 +704,6 @@ document.addEventListener("click",async ev=>{
     case "toggle-warm": active.items[i].sets[j].warm=!active.items[i].sets[j].warm;saveActive();UI.sheet.keepScroll=1;renderSheet();break;
     case "ex-menu":{const it=active.items[i];openModal(`<h2>${esc(exById(it.exId).name)}</h2><div class="stack" style="gap:8px">
         <button class="btn block" data-act="exm-note" data-i="${i}">${it.note!=null?"Quitar nota":"Añadir nota"}</button>
-        <button class="btn block" data-act="exm-up" data-i="${i}" ${i===0?"disabled style='opacity:.5'":""}>Subir en el orden</button>
         <button class="btn block" data-act="exm-delset" data-i="${i}" ${it.sets.length<=1?"disabled style='opacity:.5'":""}>Quitar última serie</button>
         <button class="btn danger block" data-act="exm-remove" data-i="${i}">Quitar ejercicio del entreno</button>
         <button class="btn ghost block" data-act="modal-close">Cerrar</button></div>`);break}
@@ -791,6 +803,53 @@ async function mergeImport(data,silent){
   localSnapshot();
   return n;
 }
+
+/* reordenar arrastrando: se agarra el asa ⠿ y se suelta donde toque */
+(function(){
+  const root=document.getElementById("sheet-root");
+  root.addEventListener("pointerdown",e=>{
+    const grip=e.target.closest("[data-grip]");if(!grip||(e.pointerType==="mouse"&&e.button!==0))return;
+    const block=grip.closest("[data-drag-item]"),list=block&&block.parentElement;if(!list)return;
+    e.preventDefault();
+    const kind=list.dataset.dragList,items=[...list.querySelectorAll(":scope > [data-drag-item]")];
+    const from=items.indexOf(block),body=root.querySelector(".body");
+    const rects=items.map(el=>el.getBoundingClientRect());
+    const gap=items.length>1?Math.max(0,rects[1].top-rects[0].bottom):0,shift=rects[from].height+gap;
+    const startY=e.clientY,scroll0=body.scrollTop;let curY=startY,to=from,raf=0;
+    try{grip.setPointerCapture(e.pointerId)}catch(_){}
+    block.classList.add("dragging");document.body.classList.add("is-dragging");
+    try{navigator.vibrate&&navigator.vibrate(12)}catch(_){}
+    function layout(){
+      const dy=curY-startY+(body.scrollTop-scroll0);
+      block.style.transform=`translateY(${dy}px)`;
+      const centre=rects[from].top+rects[from].height/2+dy;
+      to=from;
+      items.forEach((_,k)=>{if(k===from)return;const mid=rects[k].top+rects[k].height/2;if(k>from&&centre>mid)to=Math.max(to,k);if(k<from&&centre<mid)to=Math.min(to,k)});
+      items.forEach((el,k)=>{if(k===from)return;let t=0;if(from<to&&k>from&&k<=to)t=-shift;else if(from>to&&k<from&&k>=to)t=shift;el.style.transform=t?`translateY(${t}px)`:""});
+    }
+    function autoscroll(){
+      const r=body.getBoundingClientRect(),zone=70;let v=0;
+      if(curY<r.top+zone)v=-Math.ceil((r.top+zone-curY)/6);else if(curY>r.bottom-zone)v=Math.ceil((curY-(r.bottom-zone))/6);
+      if(v){body.scrollTop+=Math.max(-18,Math.min(18,v));layout()}
+      raf=requestAnimationFrame(autoscroll);
+    }
+    function move(ev){curY=ev.clientY;layout()}
+    function end(ev){
+      cancelAnimationFrame(raf);grip.removeEventListener("pointermove",move);grip.removeEventListener("pointerup",end);grip.removeEventListener("pointercancel",end);
+      try{grip.releasePointerCapture(ev.pointerId)}catch(_){}
+      document.body.classList.remove("is-dragging");
+      const cancelled=ev.type==="pointercancel";
+      if(!cancelled&&to!==from){
+        const arr=kind==="active"?active.items:UI.sheet.draft.items;
+        const x=arr.splice(from,1)[0];arr.splice(to,0,x);
+        if(kind==="active")saveActive();
+        UI.sheet.keepScroll=1;renderSheet();
+      }else{items.forEach(el=>{el.style.transform=""});block.classList.remove("dragging")}
+    }
+    grip.addEventListener("pointermove",move);grip.addEventListener("pointerup",end);grip.addEventListener("pointercancel",end);
+    raf=requestAnimationFrame(autoscroll);layout();
+  });
+})();
 
 /* reloj del entreno y del descanso */
 setInterval(()=>{
